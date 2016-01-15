@@ -48,11 +48,10 @@ void Update_Matrices(){
 	glfwGetCursorPos(window, &xpos, &ypos);
 
 	// Reset mouse position for next frame
-	glfwSetCursorPos(window, 1024/2, 768/2);
 
 	// Compute new orientation
-	AngleHorizontal += vitesseSouris * float(1024/2 - xpos );
-	AngleVertical   += vitesseSouris * float( 768/2 - ypos );
+	//AngleHorizontal += vitesseSouris * float(1024/2 - xpos );
+	//AngleVertical   += vitesseSouris * float( 768/2 - ypos );
 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
 	glm::vec3 direction(

@@ -201,7 +201,7 @@ static inline void mat4x4_rotate(mat4x4 R, mat4x4 M, float x, float y, float z, 
 			{-u[2],     0,  u[0], 0},
 			{ u[1], -u[0],     0, 0},
 			{    0,     0,     0, 0}
-		};
+                };
 		mat4x4_scale(S, S, s);
 
 		mat4x4 C;

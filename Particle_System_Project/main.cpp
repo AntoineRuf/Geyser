@@ -1,9 +1,12 @@
+#define _USE_MATH_DEFINES
+
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <vector>
 #include <algorithm>
-
+#include <cstdio>
+#include <cstring>
 #include <GL/glew.h>
 
 #include <glfw3.h>
@@ -19,6 +22,7 @@ using namespace glm;
 #include <common/texture.hpp>
 #include <common/controls.hpp>
 
+#include <Particle_System_Project/Jzon.h>
 //Definition d'une structure pour les particules :
 struct Particule{
 	glm::vec3 position, vitesse;
@@ -32,8 +36,7 @@ struct Particule{
 		return this->cameradistance > that.cameradistance;
 	}
 };
-
-const int Particule_Max = 100000;
+const int Particule_Max = 50000;
 Particule Contenant_Particule[Particule_Max];
 int Derniere_Particule = 0;
 
@@ -61,13 +64,17 @@ int Trouve_Derniere_Particule(){
 	return 0; //Dans le cas ou toute les particules sont prises, on renvoie l'indice de la première.
 }
 
-void Tri_Particule(){
+void Tri_Particule()
+{
 	//Trie les particules dans le tableau.
 	std::sort(&Contenant_Particule[0], &Contenant_Particule[Particule_Max]);
 }
 
 int main( void )
 {
+	srand(NULL);
+	Jzon::Object rootNode;
+	Jzon::FileReader::ReadFile("config.json", rootNode);
 	// Initialise GLFW
 	if( !glfwInit() )
 	{
@@ -84,7 +91,7 @@ int main( void )
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Création d'une fenêtre et mise en place du contexte courant
-	window = glfwCreateWindow( 1024, 768, "Particle System Project", NULL, NULL);
+	window = glfwCreateWindow( 1024, 768, "Geyser", NULL, NULL);
 	if( window == NULL ){
 		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
 		getchar();
@@ -102,11 +109,9 @@ int main( void )
 		return -1;
 	}
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwPollEvents();
-    glfwSetCursorPos(window, 1024/2, 768/2);
 
-	// COuleur de l'arrière-plan (TODO : changer la couleur du background via un fichier)
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
 	glEnable(GL_DEPTH_TEST);
@@ -168,17 +173,23 @@ int main( void )
 	glBindBuffer(GL_ARRAY_BUFFER, buffer_particule_couleur);
 	glBufferData(GL_ARRAY_BUFFER, Particule_Max * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW);
 
-
-	
 	double lastTime = glfwGetTime();
 	do
 	{
+		Jzon::Object::iterator it = rootNode.begin();
+		Jzon::Node &node1 = (*it).second;
+		float Intensity = node1.ToFloat();
+		++it;
+		Jzon::Node &node2 = (*it).second;
+		float BlastForce = node2.ToFloat();
+		++it;
+		Jzon::Node &node3 = (*it).second;
+		float expectedLife = node3.ToFloat();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		double currentTime = glfwGetTime();
 		double delta = currentTime - lastTime;
 		lastTime = currentTime;
-
 
 		Update_Matrices();
 		glm::mat4 ProjectionMatrix = getProjectionMatrix();
@@ -195,36 +206,36 @@ int main( void )
 		int newparticles = (int)(delta*10000.0);
 		if (newparticles > (int)(0.016f*10000.0))
 			newparticles = (int)(0.016f*10000.0);
-
+		double x, y;
+		glfwGetCursorPos(window, &x, &y);
 		//A chaque nouvelle particule, on affecte un temps de vie et une position.
-		for(int i=0; i<newparticles; i++){
+		for(int i=0; i<newparticles; i++)
+		{
 			int particleIndex = Trouve_Derniere_Particule();
-			Contenant_Particule[particleIndex].vie = 5.0f; // TODO : changer la durée de vie des particules
-			Contenant_Particule[particleIndex].position = glm::vec3(0,0,-20.0f);
-
-			float spread = 1.5f; //TODO : changer la valeur du spread via un fichier
+			Contenant_Particule[particleIndex].vie = expectedLife; // TODO : changer la durée de vie des particules
+			float real_x = (x - 1024/2) / 36;
+			float real_y = (768/2 - y) / 38;
+			Contenant_Particule[particleIndex].position = glm::vec3(real_x, real_y, -20.0f);
 			glm::vec3 maindir = glm::vec3(0.0f, 10.0f, 0.0f);
-			// TODO : coder générateur de direction aléatoire plus joli
-				glm::vec3 randomdir = glm::vec3(
+			glm::vec3 randomdir = glm::vec3(
 				(rand()%2000 - 1000.0f)/1000.0f,
 				(rand()%2000 - 1000.0f)/1000.0f,
 				(rand()%2000 - 1000.0f)/1000.0f
 			);
-			if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+			if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 			{
-				float BlastForce = 4; //A modifier via JSon
 				Contenant_Particule[particleIndex].vitesse = randomdir * BlastForce;
 			}
 			else
 			{
-				Contenant_Particule[particleIndex].vitesse = maindir + randomdir*spread;
+				Contenant_Particule[particleIndex].vitesse = maindir + randomdir*Intensity;
 			}
 
 			// TODO : choisir couleur des particules
 			Contenant_Particule[particleIndex].r = 255;
 			Contenant_Particule[particleIndex].g = 255;
 			Contenant_Particule[particleIndex].b = 255;
-			Contenant_Particule[particleIndex].a = (rand() % 256) / 3;
+			Contenant_Particule[particleIndex].a = 180;
 
 			Contenant_Particule[particleIndex].taille = (rand()%1000)/2000.0f + 0.1f;
 			
@@ -245,20 +256,42 @@ int main( void )
 				if (p.vie > 0.0f){
 
 					// Simulation de la gravité, sans collision
-					//Physique 1 : Fountain (à changer via JSON)
-					if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+					//Physique 1 : Fountain
+					if ((glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_1) != GLFW_PRESS))
 					{
 						p.vitesse += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
+						p.r = (255.0f / expectedLife) * (expectedLife - p.vie);
+						p.g = (255.0f / expectedLife) * (expectedLife - p.vie);
+						p.b = 255.0f;
 						
 					}
 					//Physique 2 : Blast
-					else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+					else if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && (glfwGetKey(window, GLFW_KEY_2) != GLFW_PRESS))
 					{
-						//On ne fait rien : la vitesse des particules est constante et déterminée à leur génération.
+						p.vitesse += glm::vec3(p.vitesse.x / 100, p.vitesse.y / 100, 0.0f);
+						p.r = 255.0f;
+						p.g = (255.0f / expectedLife) * (expectedLife - p.vie);
+						p.b = 0.0f;
 					}
-					else
+					//Physique 3 : Comet_Right
+					else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
 					{
-						p.vitesse += glm::vec3(0.0f, -2.0f, 0.0f) * (float)delta * 0.5f;
+						glm::vec3 dispersion = glm::vec3(
+							(rand() % 10) + 20,
+							(rand() % 3) - 1.5,
+							0.0f
+							);
+						p.vitesse += dispersion * (float)delta * 0.5f;
+						p.r = 0.0f;
+						p.g = 255.0f;
+						p.b = (255.0f/expectedLife) * (expectedLife - p.vie);
+					}
+					else //Physique 4 : Smoke
+					{
+						p.vitesse -= glm::vec3(0.0f, 2.0f, 0.0f) * (float)delta * 0.5f;
+						p.r = (255.0f / expectedLife) * (expectedLife - p.vie);
+						p.g = (255.0f / expectedLife) * (expectedLife - p.vie);
+						p.b = (255.0f / expectedLife) * (expectedLife - p.vie);
 					}
 					p.position += p.vitesse * (float)delta;
 					p.cameradistance = glm::length2(p.position - CameraPosition);
@@ -274,7 +307,9 @@ int main( void )
 					donnees_particule_couleur[4*ParticlesCount+2] = p.b;
 					donnees_particule_couleur[4*ParticlesCount+3] = p.a;
 
-				}else{
+				}
+				else
+				{
 					// Dans le cas où la particule est morte, elle sera placé à la fin du buffer grâce à Tri_Particules
 					p.cameradistance = -1.0f;
 				}
