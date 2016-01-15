@@ -63,7 +63,6 @@ add_executable(Geyser
 	common/controls.hpp
 	Particle_System_Project/Particle.fragmentshader
 	Particle_System_Project/Particle.vertexshader
-	Particle_System_Project/json/json.h
 )
 
 target_link_libraries(Geyser
